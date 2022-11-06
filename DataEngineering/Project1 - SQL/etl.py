@@ -6,6 +6,20 @@ from sql_queries import *
 import datetime
 
 def process_song_file(cur, filepath):
+    """
+    Extracts data from the song data json files in the song_data directory/subdirectories
+    Converts  data into format readable to PostGreSQL insert statements
+    Calls INSERT queries song_table_insert and artist_table_insert to load into sparkifydb
+    Parameters
+    - cur - cursor for PostgreSQL database
+    - filepath - relative path to single json file containing song data
+
+    DB Insertions
+    ['song_id', 'title', 'artist_id', 'year', 'duration'] -> songs
+    ['artist_id', 'artist_name', 'artist_location', 'artist_latitude', 'artist_longitude'] -> artists
+
+    fields title, artist_name, artist_location are likely to contain the ' character, thus escape characters need to be used to handle these
+    """
     # open song file
     df = pd.read_json(filepath, lines=True)
     # Replace ' with '' to act as escape character in PostGreSQL queries
@@ -25,6 +39,24 @@ def process_song_file(cur, filepath):
         cur.execute(artist_table_insert, artist_data)
 
 def process_log_file(cur, filepath):
+    """
+    Extracts data from the log data json files in the log_data directory/subdirectories
+    Converts  data into format readable to PostGreSQL insert statements
+    Calls INSERT queries user_table_insert, time_table_insert and songplay_table_insert to load into sparkifydb
+
+    Parameters
+    - cur - cursor for PostgreSQL database
+    - filepath - relative path to single json file containing log data of songs that have been played
+
+    DB Insertions
+    ["start_time", "hour", "day", "week", "month", "year", "weekday"] -> time
+    ['userId', 'firstName', 'lastName', 'gender', 'level'] -> artists -> users
+    ['start_time', 'user_id', 'level', 'song_id', 'artist_id', 'session_id', 'location', 'user_agent'] -> songplays
+
+    - song_id, artist_id are determined from the query song_select, which extracts these from a join of tables songs and artists, with 
+    search terms songs.title AND artists.name AND songs.duration
+    - fields firstName, lastName are likely to contain the ' character, thus escape characters need to be used to handle these
+    """
     # open log file
     print(filepath)
     df = pd.read_json(filepath, lines=True)
@@ -84,6 +116,14 @@ def process_log_file(cur, filepath):
         cur.execute(songplay_table_insert, songplay_data)
 
 def process_data(cur, conn, filepath, func):
+    """
+        Generates a list of filepaths to all song or log data, and iterates through this list with the relevant function to handle the json data file to perform ETL.
+        Parameters
+        - cur - cursor for PostgreSQL database
+        - conn - connection object for PostGreSQL database
+        - filepath - relative path to single json file containing song data
+        - func - function to use to handle the json data files
+    """
     # get all files matching extension from directory
     all_files = []
     for root, dirs, files in os.walk(filepath):
@@ -102,6 +142,11 @@ def process_data(cur, conn, filepath, func):
         print('{}/{} files processed.'.format(i, num_files))
 
 def main():
+    """
+    Entry point for etl program
+    Initialises connection to sparkifydb
+    Calls process_data with func argument to handle song or log file data respectively
+    """
     conn = psycopg2.connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
     cur = conn.cursor()
 
