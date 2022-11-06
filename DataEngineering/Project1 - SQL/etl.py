@@ -3,35 +3,31 @@ import glob
 import psycopg2
 import pandas as pd
 from sql_queries import *
-
+import datetime
 
 def process_song_file(cur, filepath):
     # open song file
-    
     df = pd.read_json(filepath, lines=True)
-    print(df.head())
+    # Replace ' with '' to act as escape character in PostGreSQL queries
+    df['title'] = df['title'].str.replace("'", "''")
+    df['artist_name'] = df['artist_name'].str.replace("'", "''")
+    df['artist_location'] = df['artist_location'].str.replace("'", "''")
+
     song_list = df[['song_id', 'title', 'artist_id', 'year', 'duration']].values.tolist()
     for song_data in song_list:
     # insert song record
-    # cur.execute("INSERT INTO test (song_id, title, artist_id, year, duration) VALUES (%s, %s, %s, %s, %s)", (100, "abc'def"))
-    
-    # CREATE TABLE IF NOT EXISTS songs (song_id int, title varchar, artist_id int, year int, duration float)
         cur.execute(song_table_insert, song_data)
     
     # insert artist record
-    # CREATE TABLE IF NOT EXISTS artists (artist_id varchar, name varchar, location varchar, latitude float, longitude float)
-
     artist_list = df[['artist_id', 'artist_name', 'artist_location', 'artist_latitude', 'artist_longitude']].values.tolist()
     for artist_data in artist_list:
         # artist_data = ""
         cur.execute(artist_table_insert, artist_data)
 
-
-
 def process_log_file(cur, filepath):
     # open log file
+    print(filepath)
     df = pd.read_json(filepath, lines=True)
-    print(df.head)
 
     # filter by NextSong action
     df = df.loc[df['page'] == 'NextSong']
@@ -48,7 +44,15 @@ def process_log_file(cur, filepath):
         cur.execute(time_table_insert, list(row))
 
     # load user table
-    user_df = ""
+    user_df = pd.read_json(filepath, lines=True)[['userId', 'firstName', 'lastName', 'gender', 'level']]
+    # filter out user rows without a userId, as this contains null and possibly corrupt data 
+    # print(user_df)
+    print(user_df.dtypes)
+
+    user_df = user_df[user_df['userId'].astype('str') != '']
+    # Replace ' with '' to act as escape character in PostGreSQL queries
+    user_df['firstName'] = df['firstName'].str.replace("'", "''")
+    user_df['lastName'] = df['lastName'].str.replace("'", "''")
 
     # insert user records
     for i, row in user_df.iterrows():
@@ -56,7 +60,6 @@ def process_log_file(cur, filepath):
 
     # insert songplay records
     for index, row in df.iterrows():
-        
         # get songid and artistid from song and artist tables
         cur.execute(song_select, (row.song, row.artist, row.length))
         results = cur.fetchone()
@@ -67,9 +70,18 @@ def process_log_file(cur, filepath):
             songid, artistid = None, None
 
         # insert songplay record
-        songplay_data = ""
+        # songplay_id is a serial object that auto-increments - functions as primary key
+        songplay_data = [
+            pd.to_datetime(row.ts, unit='ms'), 
+            row.userId, 
+            row.level, 
+            songid, 
+            artistid, 
+            row.sessionId, 
+            row.location,
+            row.userAgent
+            ]
         cur.execute(songplay_table_insert, songplay_data)
-
 
 def process_data(cur, conn, filepath, func):
     # get all files matching extension from directory
@@ -88,7 +100,6 @@ def process_data(cur, conn, filepath, func):
         func(cur, datafile)
         conn.commit()
         print('{}/{} files processed.'.format(i, num_files))
-
 
 def main():
     conn = psycopg2.connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
