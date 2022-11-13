@@ -33,8 +33,11 @@ except Exception as e:
 
 # 2 queries for the data 
 # get all albums in the music livrary released in a given year
-# get all albums in hte music library created by a given artist
+# get all albums in the music library created by a given artist
 # 1 query - 1 table - create 2 tables that partition the data differently
+
+# An excellent introduction to primary keys in CassandraDB
+# https://www.morsecodist.io/blog/cassandra-basics-primary-keys
 
 query = "Create TABLE IF NOT EXISTS music_library"
 query = query + "(year int, artist_name text, album_name text, PRIMARY KEY (year, artist_name))"
