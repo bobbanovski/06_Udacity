@@ -27,8 +27,9 @@ except Exception as e:
     
 # Requirements of data
 # Give me all the information from the music library about a given album
+# Add the artist name column in the composite key to ensure uniqueness
 query = "CREATE TABLE IF NOT EXISTS music_library "
-query = query + "(year int, artist_name text, album_name text, city text, PRIMARY KEY (album_name))"
+query = query + "(year int, artist_name text, album_name text, city text, PRIMARY KEY (album_name, artist_name))"
 try:
     session.execute(query)
 except Exception as e:

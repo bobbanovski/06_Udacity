@@ -37,7 +37,7 @@ except Exception as e:
 # What should be primary key, partition key
 # Customer looking for year - need to validate that data has an even spread across nodes when querying the data
 query = "Create TABLE IF NOT EXISTS music_library "
-query = query + "(year int, artist_name text, album_name text, city text, PRIMARY KEY (year))"
+query = query + "(year int, artist_name text, album_name text, city text, PRIMARY KEY (year, album_name))"
 # query = "DROP TABLE music_library"
 try:
     session.execute(query)
@@ -58,6 +58,8 @@ for item in insert_queries:
     except Exception as e:
         print(e)
 
+# Required query - get all albums for a year
+# Only returns a single line - incorrect primary key assigned - add album_name to form composite key
 query_select = "select * from music_library WHERE YEAR=1965"
 try:
     rows = session.execute(query_select)
